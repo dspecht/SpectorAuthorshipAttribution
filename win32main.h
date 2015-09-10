@@ -1,5 +1,6 @@
 #ifndef WIN32MAIN_H
 
+#include <cstdio>
 #include <cstdint>
 
 #define internal static
