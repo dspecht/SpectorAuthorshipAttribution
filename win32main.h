@@ -4,6 +4,7 @@
 #include "malloc.h"
 #include "stdio.h"
 #include "stdint.h"
+#include "cStringLib.h"
 
 #define internal static
 #define globalVar static
@@ -43,7 +44,7 @@ typedef enum
 	FunctionWords_tag,
 	Punctuation_tag,
 	Pronoun_tag,
-	Verb_tag, 
+	Verb_tag,
 	Adverb_tag,
 	Adjective_tag,
 	Preposition_tag,

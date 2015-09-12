@@ -6,8 +6,9 @@ globalVar WordList wordsListArray[9];
 
 bool StringEquivalent(char * First, char * Second)
 {
-    int Count = 0;
-    while(!(First[Count] == '\0' && Second[Count] == '\0') && Count < LONGEST_WORD_LENGTH)
+    u32 Count = 0;
+    while(!(First[Count] == '\0' && Second[Count] == '\0') \
+            && Count < LONGEST_WORD_LENGTH)
     {
         if(First[Count] != Second[Count])
         {
@@ -22,9 +23,9 @@ bool StringEquivalent(char * First, char * Second)
 void StringReformat(char * Token)
 {
     char CurrentCharacter;
-    int Current = 0;
-    int LastWrittenTo = 0;
-    
+    u32 Current = 0;
+    u32 LastWrittenTo = 0;
+
     while(Token[Current] != '\0')
     {
         CurrentCharacter = Token[Current++];
@@ -56,9 +57,9 @@ WordTypeTag_TDE FindTag(char * Token, char **tags)
 {
     if(Token[0] == '<')
     {
-        for(int i = 0;
-            i < NUMBER_OF_TAGS;
-            ++i)
+        for(u8 i = 0;
+                i < NUMBER_OF_TAGS;
+                ++i)
         {
             if(StringEquivalent(Token, tags[i]))
             {
@@ -74,17 +75,17 @@ WordTypeTag_TDE FindTag(char * Token, char **tags)
 }
 
 void ExtractXMLNodeContents(FILE *handle, char **tags)
-{     
+{
     rewind(handle);
 
     char *Token = (char *)malloc(sizeof(char) * LONGEST_WORD_LENGTH);
     WordTypeTag_TDE ActiveTag = NULL_TAG;
-    int CountInTag = 0;
+    u32 CountInTag = 0;
     while(!feof(handle))
     {
         if(fgets(Token, 100, handle))
         {
-			StringReformat(Token);
+            StringReformat(Token);
             WordTypeTag_TDE Tag = FindTag(Token, tags);
             if(Tag == ActiveTag)
             {
@@ -94,7 +95,7 @@ void ExtractXMLNodeContents(FILE *handle, char **tags)
             {
                 Assert(ActiveTag != NULL_TAG);
                 wordsListArray[ActiveTag].words[CountInTag] = Token;
-                ++wordsListArray[ActiveTag].count; 
+                ++wordsListArray[ActiveTag].count;
             }
             else
             {
@@ -108,14 +109,16 @@ void ExtractXMLNodeContents(FILE *handle, char **tags)
 
 bool ReadDictionaryFromXMLConfigFile()
 {
-    char *Tags[NUMBER_OF_TAGS] = {"<FunctionWords>", "<Punctuation>", "<Pronoun>", "<Verb>", "<Adverb>", "<Adjective>", "<Preposition>", "<Determiniers>", "<Profanities>"};
-    
+    char *Tags[NUMBER_OF_TAGS] = {"<FunctionWords>", "<Punctuation>", "<Pronoun>",\
+        "<Verb>", "<Adverb>", "<Adjective>", "<Preposition>", "<Determiniers>", "<Profanities>"};
+
     FILE *handle = NULL;
     fopen_s(&handle, "dictConfig.xml", "r");
-    if(handle == NULL) 
-    { 
-        printf("\nFailed to open config file, please ensure the xml file is in the same dir as you launched this from\n");
-        return false; 
+    if(handle == NULL)
+    {
+        printf("\nFailed to open config file, please ensure the xml file is in \
+                the same dir as you launched this from\n");
+        return false;
     }
     else
     {
