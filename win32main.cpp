@@ -2,39 +2,126 @@
 
 globalVar WordList wordsListArray[9];
 
-void ExtractXMLNodeContents(FILE *handle, char *tag, char *endTag, u8 WLIndex)
+#define LONGEST_WORD_LENGTH 100
+
+bool StringEquivalent(char * First, char * Second)
 {
-    //NOTE do we really need ftell here? it was recomended on the fseek MSDN page
-
-    fseek(handle, ftell(handle), SEEK_SET); // move to start of file
-    char *token = NULL;
-    while(token != tag) { fscanf_s(handle, "%s", token); }
-    Assert(token == tag);
-    fscanf_s(handle, "%s", token); // move token past tag to get wanted info
-    do
+    int Count = 0;
+    while(!(First[Count] == '\0' && Second[Count] == '\0') && Count < LONGEST_WORD_LENGTH)
     {
-        wordsListArray[WLIndex].words[wordsListArray[WLIndex].count] = token;
-        wordsListArray[WLIndex].count++;
-
-        fscanf_s(handle, "%s", token);
+        if(First[Count] != Second[Count])
+        {
+            return false;
+        }
+        Assert(!(First[Count] == '\0' || Second[Count] == '\0'));
+        ++Count;
     }
-    while(token != endTag);
+    return true;
+}
+
+void StringReformat(char * Token)
+{
+    char CurrentCharacter;
+    int Current = 0;
+    int LastWrittenTo = 0;
+    
+    while(Token[Current] != '\0')
+    {
+        CurrentCharacter = Token[Current++];
+        Assert(CurrentCharacter);
+
+        if(CurrentCharacter == ' ' ||
+           CurrentCharacter == '\n'||
+           CurrentCharacter == '\t'||
+           CurrentCharacter == '/')
+        {
+            continue;
+        }
+        else
+        {
+            Token[LastWrittenTo++] = CurrentCharacter;
+        }
+    }
+    if(LastWrittenTo > 0)
+    {
+        Token[LastWrittenTo] = '\0';
+    }
+    else
+    {
+        Token = "";
+    }
+}
+
+WordTypeTag_TDE FindTag(char * Token, char **tags)
+{
+    if(Token[0] == '<')
+    {
+        for(int i = 0;
+            i < NUMBER_OF_TAGS;
+            ++i)
+        {
+            if(StringEquivalent(Token, tags[i]))
+            {
+                return (WordTypeTag_TDE)i;
+            }
+        }
+        return NULL_TAG;
+    }
+    else
+    {
+        return NON_TAG;
+    }
+}
+
+void ExtractXMLNodeContents(FILE *handle, char **tags)
+{     
+    rewind(handle);
+
+    char *Token = (char *)malloc(sizeof(char) * LONGEST_WORD_LENGTH);
+    WordTypeTag_TDE ActiveTag = NULL_TAG;
+    int CountInTag = 0;
+    while(!feof(handle))
+    {
+        if(fgets(Token, 100, handle))
+        {
+			StringReformat(Token);
+            WordTypeTag_TDE Tag = FindTag(Token, tags);
+            if(Tag == ActiveTag)
+            {
+                continue;
+            }
+            else if(Tag == NON_TAG)
+            {
+                Assert(ActiveTag != NULL_TAG);
+                wordsListArray[ActiveTag].words[CountInTag] = Token;
+                ++wordsListArray[ActiveTag].count; 
+            }
+            else
+            {
+                ActiveTag = Tag;
+                wordsListArray[ActiveTag].count = 0;
+            }
+        }
+    }
+    free((void*)Token);
 }
 
 bool ReadDictionaryFromXMLConfigFile()
 {
-    char *TagsOpen[9] = {"<FunctionWords>", "<Punctuation>", "<Pronoun>", "<Verb>", "<Adverb>" "<Adjective>", "<Preposition>", "<Determiniers>", "<Profanities>"};
-    char *TagsEnd[9] = {"</FunctionWords>","</Punctuation>","</Pronun>","</Verb>","</Adverb>","</Adjective>","</Preposition>","</Determiniers>","</Profanities>"};
-
+    char *Tags[NUMBER_OF_TAGS] = {"<FunctionWords>", "<Punctuation>", "<Pronoun>", "<Verb>", "<Adverb>", "<Adjective>", "<Preposition>", "<Determiniers>", "<Profanities>"};
+    
     FILE *handle = NULL;
     fopen_s(&handle, "dictConfig.xml", "r");
-    if(handle == NULL) { printf("\nFailed to open config file, please ensure \
-            the xml file is in the same dir as you launched this from\n");
-        return false; }
-    for(u8 i = 0; i < (NUMBER_OF_TAGS); i++)
-    {
-        ExtractXMLNodeContents(handle, TagsOpen[i], TagsEnd[i], i);
+    if(handle == NULL) 
+    { 
+        printf("\nFailed to open config file, please ensure the xml file is in the same dir as you launched this from\n");
+        return false; 
     }
+    else
+    {
+        ExtractXMLNodeContents(handle, Tags);
+    }
+
 
     fclose(handle);
     return true;

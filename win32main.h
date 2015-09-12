@@ -1,5 +1,7 @@
 #ifndef WIN32MAIN_H
 
+#include "stdlib.h"
+#include "malloc.h"
 #include "stdio.h"
 #include "stdint.h"
 
@@ -38,17 +40,19 @@ typedef float r32;
 
 typedef enum
 {
-	FunctionWords,
-	Punctuation,
-	Pronoun,
-	Verb, 
-	Adverb,
-	Adjective,
-	Preposition,
-	Determiners,
-	Profanities,
-	NUMBER_OF_TAGS
-}Word_Type_Tags_dt;
+	FunctionWords_tag,
+	Punctuation_tag,
+	Pronoun_tag,
+	Verb_tag, 
+	Adverb_tag,
+	Adjective_tag,
+	Preposition_tag,
+	Determiniers_tag,
+	Profanities_tag,
+	NUMBER_OF_TAGS,
+	NON_TAG,
+	NULL_TAG
+}WordTypeTag_TDE;
 
 struct WordList
 {
