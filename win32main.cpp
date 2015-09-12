@@ -31,7 +31,7 @@ bool ReadDictionaryFromXMLConfigFile()
     if(handle == NULL) { printf("\nFailed to open config file, please ensure \
             the xml file is in the same dir as you launched this from\n");
         return false; }
-    for(u8 i = 0; i < (NUMBER_OF_TAGS+1); i++)
+    for(u8 i = 0; i < (NUMBER_OF_TAGS); i++)
     {
         ExtractXMLNodeContents(handle, TagsOpen[i], TagsEnd[i], i);
     }

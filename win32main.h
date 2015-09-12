@@ -1,7 +1,7 @@
 #ifndef WIN32MAIN_H
 
-#include <cstdio>
-#include <cstdint>
+#include "stdio.h"
+#include "stdint.h"
 
 #define internal static
 #define globalVar static
@@ -36,9 +36,23 @@ typedef float r32;
 
 #define MAX_WORDS_PER_LIST 1000
 
+typedef enum
+{
+	FunctionWords,
+	Punctuation,
+	Pronoun,
+	Verb, 
+	Adverb,
+	Adjective,
+	Preposition,
+	Determiners,
+	Profanities,
+	NUMBER_OF_TAGS
+}Word_Type_Tags_dt;
+
 struct WordList
 {
-    char *words[MAX_WORDS_PER_LIST] = {};
+    char *words[MAX_WORDS_PER_LIST];
     u32 count = 0;
 };
 
