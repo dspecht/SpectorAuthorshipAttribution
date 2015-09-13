@@ -4,8 +4,8 @@
 
 int getStringLength(char *str)
 {
-    int result= 0;
-    for(int index = 0; str[index]; index++)
+    int result = 0;
+    while(*str++ != '\0')
     {
         ++result;
     }
@@ -15,8 +15,9 @@ int getStringLength(char *str)
 // Utliity function
 void clearTempStringsToNull(char *str)
 {
-    for(int index = 0; str[index] ; index++)
-    {str[index] = 0;}
+    while((*str++ = 0) != '\0');
+   // for(int index = 0; str[index] ; index++)
+   // {str[index] = 0;}
 }
 
 //TODO: make another compreString that is case insensitive
@@ -39,26 +40,20 @@ bool compareString(char *fString, char *sString)
     return result;
 }
 
-//NOTE(dustin): if you don't pass a placeToPutCopiedString then you will have to free the result
-char* CopyString(char *strToCopy, char *placeToPutCopiedString=NULL)
+//NOTE(dustin): if you don't pass a dest then you will have to free the result
+char* CopyString(char *source, char *dest=NULL)
 {
-    if(!placeToPutCopiedString)
+    if(!dest)
     {
-        char *result = (char*)calloc(getStringLength(strToCopy)+1, sizeof(char));
+        char *result = (char*)calloc(getStringLength(source)+1, sizeof(char));
 
-        for (int index = 0; strToCopy[index]; index++)
-        {
-            result[index] = strToCopy[index];
-        }
+        while((*result++ = *source++) != '\0');
         return result;
     }
     else
     {
-        for (int index = 0; strToCopy[index]; index++)
-        {
-            placeToPutCopiedString[index] = strToCopy[index];
-        }
-        return placeToPutCopiedString; // if you check for a return, this make it not fail everytime
+        while((*dest++ = *source++) != '\0');
+        return dest; // if you check for a return, this make it not fail everytime
     }
 }
 

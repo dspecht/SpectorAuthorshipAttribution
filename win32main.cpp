@@ -78,7 +78,7 @@ void ExtractXMLNodeContents(FILE *handle, char **tags)
 {
     rewind(handle);
 
-    char *Token = (char *)malloc(sizeof(char) * LONGEST_WORD_LENGTH);
+    char *Token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
     WordTypeTag_TDE ActiveTag = NULL_TAG;
     u32 CountInTag = 0;
     while(!feof(handle))
@@ -124,7 +124,6 @@ bool ReadDictionaryFromXMLConfigFile()
     {
         ExtractXMLNodeContents(handle, Tags);
     }
-
 
     fclose(handle);
     return true;

@@ -50,6 +50,7 @@ typedef enum
 	Preposition_tag,
 	Determiniers_tag,
 	Profanities_tag,
+    Other_tag, // For everything that is not in the other tags
 	NUMBER_OF_TAGS,
 	NON_TAG,
 	NULL_TAG
