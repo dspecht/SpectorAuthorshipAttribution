@@ -56,6 +56,13 @@ typedef enum
 	NULL_TAG
 }WordTypeTag_TDE;
 
+struct DocumentWord
+{
+    char *word;
+    WordTypeTag_TDE tag;
+    u32 count = 0;
+};
+
 struct WordList
 {
     char *words[MAX_WORDS_PER_LIST];
