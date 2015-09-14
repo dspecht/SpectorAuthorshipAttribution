@@ -3,6 +3,7 @@
 globalVar WordList wordsListArray[9];
 
 #define LONGEST_WORD_LENGTH 100
+#define MAX_WORDS_IN_A_LIST 100000
 
 bool StringEquivalent(char * first, char * second)
 {
@@ -142,18 +143,18 @@ bool isPunctuation(char token)
     return false;
 }
 
-inline void AddToDocumentWordCount(DocumentWord[] *docWordList, u32 docCount, char *word, WordTypeTag_TDE tag)
+inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, WordTypeTag_TDE tag)
 {
     u32 index = 0;
     bool wordFound = false;
     while(index < docCount)
     {
-        if(docWordList[index]->tag == tag)
+        if(docWordList[index].tag == tag)
         {
-            if(docWordList[index]->word == word)
+            if(docWordList[index].word == word)
             {
                 wordFound = true;
-                docWordList[index]->count++;
+                docWordList[index].count++;
                 continue;
             }
         }
@@ -178,18 +179,19 @@ bool ReadDocument(char *documentFilePath)
         return false;
     }
     u32 documentWordCount = 0;
-    DocumentWord[100000] docWordList;
+    DocumentWord docWordList[MAX_WORDS_IN_A_LIST];
     char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
 
+    char *temp = token;
     while(!feof(handle))
     {
         if(fgets(token, LONGEST_WORD_LENGTH, handle))
-            char *temp = token;
+            temp = token;
             while(*temp++ != '\0') // rethink to actually work
             {
                 if (isPunctuation(temp[0]))
                 {
-                    AddToDocumentWordCount(&docWordList, documentWordCount, temp[0], Punctuation_tag);
+                    AddToDocumentWordCount(docWordList, documentWordCount, (char*)temp[0], Punctuation_tag);
                 }
             }
     }

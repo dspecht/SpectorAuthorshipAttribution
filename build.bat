@@ -12,6 +12,6 @@ set LinkerFlags= -incremental:no -opt:ref -NODEFAULTLIB:library %LibsLinkedTo%
 
 IF NOT EXIST build mkdir build
 
-del rm %buildDIR%*.pdb
+del .%buildDIR%*.pdb
 
 cl %Flags% win32main.cpp /link %LinkerFlags%
