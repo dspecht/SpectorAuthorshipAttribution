@@ -44,28 +44,28 @@ typedef enum
 	FunctionWords_tag,
 	Punctuation_tag,
 	Pronoun_tag,
-	Verb_tag,
+	Verb_tag, 
 	Adverb_tag,
 	Adjective_tag,
 	Preposition_tag,
 	Determiniers_tag,
 	Profanities_tag,
-    Other_tag, // For everything that is not in the other tags
 	NUMBER_OF_TAGS,
+	NEW_TAG,
 	NON_TAG,
 	NULL_TAG
 }WordTypeTag_TDE;
+
+struct WordList
+{
+    char *words[MAX_WORDS_PER_LIST];
+    u32 count = 0;
+};
 
 struct DocumentWord
 {
     char *word;
     WordTypeTag_TDE tag;
-    u32 count = 0;
-};
-
-struct WordList
-{
-    char *words[MAX_WORDS_PER_LIST];
     u32 count = 0;
 };
 

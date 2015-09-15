@@ -2,110 +2,128 @@
 
 globalVar WordList wordsListArray[9];
 
+#define MAX_XML_DEPTH 10
 #define LONGEST_WORD_LENGTH 100
 #define MAX_WORDS_IN_A_LIST 100000
 
-bool StringEquivalent(char * first, char * second)
+struct TagStack
 {
-    u32 count = 0;
-    while(!(first[count] == '\0' && second[count] == '\0') \
-            && count < LONGEST_WORD_LENGTH)
-    {
-        if(first[count] != second[count])
-        {
-            return false;
-        }
-        Assert(!(first[count] == '\0' || second[count] == '\0'));
-        ++count;
-    }
-    return true;
+    WordTypeTag_TDE Tags[MAX_XML_DEPTH];
+    int CurrentTagDepth;
+};
+
+void PushTag(WordTypeTag_TDE Tag, TagStack * Stack)
+{
+    int StackIndex = ++Stack->CurrentTagDepth;
+    Stack->Tags[StackIndex] = Tag;
 }
 
-void StringReformat(char * token)
+WordTypeTag_TDE PopTag(TagStack * Stack)
 {
-    char currentCharacter;
-    u32 current = 0;
-    u32 lastWrittenTo = 0;
+    int StackIndex = Stack->CurrentTagDepth--;
+    return Stack->Tags[StackIndex];
+}
 
-    while(token[current] != '\0')
+void StringReformat(char * Token)
+{
+    char CurrentCharacter;
+    int Current = 0;
+    int LastWrittenTo = 0;
+    
+    while(Token[Current] != '\0')
     {
-        currentCharacter = token[current++];
-        Assert(currentCharacter);
+        CurrentCharacter = Token[Current++];
+        Assert(CurrentCharacter);
 
-        if(currentCharacter == ' ' ||
-           currentCharacter == '\n'||
-           currentCharacter == '\t'||
-           currentCharacter == '/')
+        //TODO(Ruy) - MAIN - Remove '/' from tags after implementing stack-based XML parsing
+
+        if(CurrentCharacter == ' ' ||
+           CurrentCharacter == '\n'||
+           CurrentCharacter == '\t')
         {
             continue;
         }
         else
         {
-            token[lastWrittenTo++] = currentCharacter;
+            Token[LastWrittenTo++] = CurrentCharacter;
         }
     }
-    if(lastWrittenTo > 0)
+    if(LastWrittenTo > 0)
     {
-        token[lastWrittenTo] = '\0';
+        Token[LastWrittenTo] = '\0';
     }
     else
     {
-        token = "";
+        Token = "";
     }
 }
 
-WordTypeTag_TDE FindTag(char * token, char **tags)
+WordTypeTag_TDE FindTag(char * Token, char **tags, TagStack * Stack)
 {
-    if(token[0] == '<')
+    if(Token[0] == '<')
     {
-        for(u8 i = 0;
+        if(Token[1] == '/')
+        {
+            WordTypeTag_TDE Tag = PopTag(Stack);
+            return NULL_TAG;
+        }
+        else
+        {
+            for(int i = 0;
                 i < NUMBER_OF_TAGS;
                 ++i)
-        {
-            if(StringEquivalent(token, tags[i]))
             {
-                return (WordTypeTag_TDE)i;
+                if(compareString(Token, tags[i]))
+                {
+                    PushTag(WordTypeTag_TDE(i), Stack);
+                    return NEW_TAG;
+                }
             }
         }
         return NULL_TAG;
     }
-    else
-    {
-        return NON_TAG;
-    }
+    return NON_TAG;
 }
 
 void ExtractXMLNodeContents(FILE *handle, char **tags)
 {
     rewind(handle);
+    char *Token = (char *)calloc(1,sizeof(char) * LONGEST_WORD_LENGTH);
 
-    char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
+    TagStack XMLStack = {};
     WordTypeTag_TDE ActiveTag = NULL_TAG;
-    u32 countInTag = 0;
+
     while(!feof(handle))
     {
-        if(fgets(token, 100, handle))
+        if(fgets(Token, 100, handle))
         {
-            StringReformat(token);
-            WordTypeTag_TDE Tag = FindTag(token, tags);
-            if(Tag == ActiveTag)
+            StringReformat(Token);
+            WordTypeTag_TDE Tag = FindTag(Token, tags, &XMLStack);
+            
+            if(Tag == NEW_TAG)
             {
-                continue;
+                ActiveTag = XMLStack.Tags[XMLStack.CurrentTagDepth]; 
+                Assert(XMLStack.CurrentTagDepth >= 0);
+                Assert((int)ActiveTag >= (int)FunctionWords_tag && (int)ActiveTag < (int)NUMBER_OF_TAGS);
+                
+                wordsListArray[ActiveTag].count = 0;                
+                continue;   
             }
             else if(Tag == NON_TAG)
             {
-                Assert(ActiveTag != NULL_TAG);
-                wordsListArray[ActiveTag].words[countInTag] = token;
-                ++wordsListArray[ActiveTag].count;
+                char *WordStorage = (char *)calloc(1,sizeof(char) * getStringLength(Token));
+                CopyString(Token, WordStorage);
+
+                wordsListArray[ActiveTag].words[wordsListArray[ActiveTag].count++] = WordStorage; 
             }
-            else
+            else if(Tag == NULL_TAG)
             {
-                ActiveTag = Tag;
-                wordsListArray[ActiveTag].count = 0;
+                ActiveTag = XMLStack.Tags[XMLStack.CurrentTagDepth];
+                continue;
             }
         }
     }
-    free((void*)token);
+    free((void *)Token);
 }
 
 bool ReadDictionaryFromXMLConfigFile()
