@@ -4,6 +4,7 @@
 #include "malloc.h"
 #include "stdio.h"
 #include "stdint.h"
+#include "cStringLib.h"
 
 #define internal static
 #define globalVar static
@@ -43,16 +44,24 @@ typedef enum
 	FunctionWords_tag,
 	Punctuation_tag,
 	Pronoun_tag,
-	Verb_tag, 
+	Verb_tag,
 	Adverb_tag,
 	Adjective_tag,
 	Preposition_tag,
 	Determiniers_tag,
 	Profanities_tag,
+    Other_tag, // For everything that is not in the other tags
 	NUMBER_OF_TAGS,
 	NON_TAG,
 	NULL_TAG
 }WordTypeTag_TDE;
+
+struct DocumentWord
+{
+    char *word;
+    WordTypeTag_TDE tag;
+    u32 count = 0;
+};
 
 struct WordList
 {
