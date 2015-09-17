@@ -209,7 +209,7 @@ bool ReadDocument(char *documentFilePath)
             u32 tagProcessingAmount = 0;
             while(*temp++ != '\0') // rethink to actually work
             {
-                if (isInATag((char*)temp[0], Punctuation_tag)
+                if (isInATag((char*)temp[0],Punctuation_tag))
                 {
                     AddToDocumentWordCount(docWordList, documentWordCount, temp, Punctuation_tag);
                     hasEndingPuncChar = true;
@@ -222,9 +222,9 @@ bool ReadDocument(char *documentFilePath)
             }
             while(tagProcessingAmount++ < NUMBER_OF_TAGS)
             {
-                if(isInATag(token), tagProcessingAmount)
+                if(isInATag((char *)token, (WordTypeTag_TDE)tagProcessingAmount))
                 {
-                    AddToDocumentWordCount(docWordList, documentWordCount, token, tagProcessingAmount);
+                    AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
                 }
              // We need to figure out how we are going to do the other tag with the dynamic list
              //   else
