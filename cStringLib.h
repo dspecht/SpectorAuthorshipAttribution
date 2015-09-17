@@ -21,7 +21,7 @@ void clearTempStringsToNull(char *str)
 }
 
 //TODO: make another compreString that is case insensitive
-bool compareString(char *fString, char *sString)
+bool CompareString(char *fString, char *sString)
 {
     int index = 0;
     bool result = false;
