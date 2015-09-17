@@ -209,7 +209,7 @@ bool ReadDocument(char *documentFilePath)
             u32 tagProcessingAmount = 0;
             while(*temp++ != '\0') // rethink to actually work
             {
-                if (isInATag((char*)temp[0],Punctuation_tag))
+                if(isInATag((char*)temp[0],Punctuation_tag))
                 {
                     AddToDocumentWordCount(docWordList, documentWordCount, temp, Punctuation_tag);
                     hasEndingPuncChar = true;
@@ -222,7 +222,7 @@ bool ReadDocument(char *documentFilePath)
             }
             while(tagProcessingAmount++ < NUMBER_OF_TAGS)
             {
-                if(isInATag((char *)token, (WordTypeTag_TDE)tagProcessingAmount))
+                if(isInATag(token, (WordTypeTag_TDE)tagProcessingAmount))
                 {
                     AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
                 }
@@ -241,4 +241,5 @@ void main(char *args[])
 {
     printf("Welcome to Spector Authorship Attribution Cpp remake");
     if(ReadDictionaryFromXMLConfigFile()) {printf("\nFile Opened Succesfully\n");}
+    if(ReadDocument("testDocument.txt")) {printf("File Read fully\n");}
 }
