@@ -158,7 +158,7 @@ bool isInATag(char *token, WordTypeTag_TDE tag)
     u32 i = 0;
     while(i++ < wordsListArray[tag].count)
     {
-        if(CompareString((char*)token, wordsListArray[tag].words[i]))
+        if(CompareString(token, wordsListArray[tag].words[i]))
         {
             return true;
         }
@@ -191,11 +191,19 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     }
 }
 
-bool ReadDocument(char *documentFilePath)
+bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read of the file to create the words
 {
     FILE *handle = OpenFile(documentFilePath, "r");
+    if(handle == NULL)
+    {
+        printf("\nFailed to open %s file, please ensure the xml file is in \
+                the same dir as you launched this from\n", documentFilePath);
+        return false;
+    }
+    rewind(handle);
     u32 documentWordCount = 0;
-    DocumentWord docWordList[MAX_WORDS_IN_A_LIST];
+    //NOTE:(down) Should not have to do this but ya know how bad things have gotten
+    DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
     char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
 
     char *temp = token;
@@ -203,13 +211,15 @@ bool ReadDocument(char *documentFilePath)
     {
         if(fgets(token, LONGEST_WORD_LENGTH, handle))
         {
-            temp = token;
+            char *result = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
+            result = SplitString(token, ' ', token, result);
+            temp = result;
             bool hasEndingPuncChar = false;
-            u32 length = getStringLength(token);
+            u32 length = getStringLength(result);
             u32 tagProcessingAmount = 0;
             while(*temp++ != '\0') // rethink to actually work
             {
-                if(isInATag((char*)temp[0],Punctuation_tag))
+                if(isInATag((char*)temp,Punctuation_tag))
                 {
                     AddToDocumentWordCount(docWordList, documentWordCount, temp, Punctuation_tag);
                     hasEndingPuncChar = true;
@@ -218,13 +228,13 @@ bool ReadDocument(char *documentFilePath)
             }
             if(hasEndingPuncChar)
             {
-                SplitString(token, token[length-1], 0, token);
+                SplitString(result, result[length-1], 0, result);
             }
             while(tagProcessingAmount++ < NUMBER_OF_TAGS)
             {
-                if(isInATag(token, (WordTypeTag_TDE)tagProcessingAmount))
+                if(isInATag(result, (WordTypeTag_TDE)tagProcessingAmount))
                 {
-                    AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
+                    AddToDocumentWordCount(docWordList, documentWordCount, result, (WordTypeTag_TDE)tagProcessingAmount);
                 }
              // We need to figure out how we are going to do the other tag with the dynamic list
              //   else
@@ -234,6 +244,7 @@ bool ReadDocument(char *documentFilePath)
             }
         }
     }
+    fclose(handle);
     return true;
 }
 
