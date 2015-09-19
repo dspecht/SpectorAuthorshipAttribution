@@ -202,8 +202,7 @@ char* GetNextToken(FILE* handle)
 
         //TODO: Find a way to do punctuation that does not cause loss of data
         //if(isInATag((char*)temp,Punctuation_tag)) {return (char*)temp;}
-        if(temp == '\n' || temp == '\t') {temp = NULL;}
-        if(!temp == NULL)
+        if(temp == '\n' || temp == '\t' || temp == NULL)
         {
             CatString(currentWord, (char*)temp, currentWord);
         }
@@ -212,8 +211,8 @@ char* GetNextToken(FILE* handle)
     return currentWord;
 }
 
-bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read of the file to create the words
-{
+bool ReadTextDocument(char *documentFilePath)
+{ //TODO:(dustin) Do a Char by Char read of the file to create the words
     FILE *handle = OpenFile(documentFilePath, "r");
     if(handle == NULL)
     {
@@ -226,10 +225,25 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
     //NOTE:(down) Should not have to do this but ya know how bad things have gotten
     DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
     char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
+    char temp = NULL;
+    u32 tagProcessingAmount = 0;
+
     while(!feof(handle))
     {
-        u32 tagProcessingAmount = 0;
-        token = GetNextToken(handle);
+        while(temp != ' ')
+        {
+            temp = (char)fgetc(handle);
+
+            if(isInATag((char*)temp,Punctuation_tag))
+            {
+                AddToDocumentWordCount(docWordList, documentWordCount, (char*)temp, Punctuation_tag);
+                continue;
+            }
+            else if(temp != '\n' || temp != '\t' || !temp != NULL)
+            {
+                CatString(token, (char*)temp, token);
+            }
+        }
 
         while(tagProcessingAmount++ < NUMBER_OF_TAGS)
         {
@@ -240,8 +254,10 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
             }
         }
         tagProcessingAmount = 0;
+        temp = NULL;
         token = {};//clear to all 0's so we don't have left over chars that could mess up the next check
     }
+
     fclose(handle);
     return true;
 }
@@ -250,5 +266,5 @@ void main(char *args[])
 {
     printf("Welcome to Spector Authorship Attribution Cpp remake");
     if(ReadDictionaryFromXMLConfigFile()) {printf("\nFile Opened Succesfully\n");}
-    if(ReadDocument("testDocument.txt")) {printf("File Read fully\n");}
+    if(ReadTextDocument("testDocument.txt")) {printf("File Read fully\n");}
 }
