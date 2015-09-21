@@ -1,28 +1,5 @@
 #include "win32main.h"
 
-globalVar WordList wordsListArray[9];
-
-#define MAX_XML_DEPTH 10
-#define LONGEST_WORD_LENGTH 100
-#define MAX_WORDS_IN_A_LIST 100000
-
-struct TagStack
-{
-    WordTypeTag_TDE Tags[MAX_XML_DEPTH];
-    int CurrentTagDepth;
-};
-
-void PushTag(WordTypeTag_TDE Tag, TagStack * Stack)
-{
-    int StackIndex = ++Stack->CurrentTagDepth;
-    Stack->Tags[StackIndex] = Tag;
-}
-
-WordTypeTag_TDE PopTag(TagStack * Stack)
-{
-    int StackIndex = Stack->CurrentTagDepth--;
-    return Stack->Tags[StackIndex];
-}
 FILE* OpenFile(char *filePath, char *openFMT="rw")
 {
     FILE *handle = NULL;
@@ -30,7 +7,7 @@ FILE* OpenFile(char *filePath, char *openFMT="rw")
     return handle;
 }
 
-void StringReformat(char * Token)
+void StripWhiteSpace(char *Token)
 {
     char CurrentCharacter;
     int Current = 0;
@@ -40,8 +17,6 @@ void StringReformat(char * Token)
     {
         CurrentCharacter = Token[Current++];
         Assert(CurrentCharacter);
-
-        //TODO(Ruy) - MAIN - Remove '/' from tags after implementing stack-based XML parsing
 
         if(CurrentCharacter == ' ' ||
            CurrentCharacter == '\n'||
@@ -64,107 +39,189 @@ void StringReformat(char * Token)
     }
 }
 
-WordTypeTag_TDE FindTag(char * Token, char **tags, TagStack * Stack)
+void StripTags(char *Token)
 {
+    char CurrentCharacter;
+    int Current = 0;
+    int LastWrittenTo = 0;
+
+    while(Token[Current] != '\0')
+    {
+        CurrentCharacter = Token[Current++];
+        Assert(CurrentCharacter);
+
+        if(CurrentCharacter == '>' ||
+           CurrentCharacter == '<'||
+           CurrentCharacter == '/')
+        {
+            continue;
+        }
+        else
+        {
+            Token[LastWrittenTo++] = CurrentCharacter;
+        }
+    }
+    if(LastWrittenTo > 0)
+    {
+        Token[LastWrittenTo] = '\0';
+    }
+    else
+    {
+        Token = "";
+    }
+}
+
+Node * NewNode(char *Token)
+{
+    Node *NewNode = (Node *)calloc(1, sizeof(Node));
+    CopyString(Token, (char *)NewNode->Tag);
+
+    return NewNode;
+}
+
+WordList * InitializeWordList()
+{
+    WordList *List = (WordList *)calloc(1, sizeof(WordList));
+    List->count = 0;
+    return List;
+}
+
+void PopToParent(NodeTree *Tree, char *Token)
+{
+    Assert(CompareString(Token, (char *)Tree->CurrentNode->Tag));
+    Assert(Tree->CurrentNode->Tag != Tree->RootNode->Tag);
+    
+    Tree->CurrentNode = Tree->CurrentNode->Parent;
+}
+
+void PushToChild(NodeTree *Tree, char * Token)
+{
+    if(!Tree->CurrentNode->Child)
+    {
+        Tree->CurrentNode->Child = NewNode(Token);
+        Tree->CurrentNode->Child->Parent = Tree->CurrentNode;
+        Tree->CurrentNode = Tree->CurrentNode->Child;
+
+        Tree->CurrentNode->LeftSibling = Tree->CurrentNode;
+        Tree->CurrentNode->RightSibling = Tree->CurrentNode;
+    }
+    else
+    {
+        //create a circular linked list for sibling nodes so that
+        //there is always only one node to traverse to add a sibling
+        //parents can only point to one child and must traverse the linked
+        //list to find all siblings
+        Node *ReferenceNode = Tree->CurrentNode->Child;
+        ReferenceNode->LeftSibling->RightSibling = NewNode(Token);
+        ReferenceNode->LeftSibling->RightSibling->LeftSibling = ReferenceNode->LeftSibling;
+        ReferenceNode->LeftSibling = ReferenceNode->LeftSibling->RightSibling;
+        ReferenceNode->LeftSibling->Parent = Tree->CurrentNode;
+
+        Tree->CurrentNode = ReferenceNode->LeftSibling;
+    }
+}
+
+void AddToList(Node *ActiveNode, char *Token)
+{
+    if(!ActiveNode->WordsInCategory)
+    {
+        ActiveNode->WordsInCategory = InitializeWordList();
+    }
+
+    char *WordLocation = (char *)calloc(1,sizeof(char) * getStringLength(Token));
+    WordList *ActiveList = ActiveNode->WordsInCategory;
+    CopyString(Token, WordLocation);
+    ActiveList->words[ActiveList->count++] = WordLocation;
+}
+
+void CheckXMLTags(char *Token, bool *OpeningTag, bool *ClosingTag)
+{
+    *OpeningTag = false;
+    *ClosingTag = false;
     if(Token[0] == '<')
     {
         if(Token[1] == '/')
         {
-            WordTypeTag_TDE Tag = PopTag(Stack);
-            return NULL_TAG;
+            *ClosingTag = true;
         }
         else
         {
-            for(int i = 0;
-                i < NUMBER_OF_TAGS;
-                ++i)
-            {
-                if(CompareString(Token, tags[i]))
-                {
-                    PushTag(WordTypeTag_TDE(i), Stack);
-                    return NEW_TAG;
-                }
-            }
+            *OpeningTag = true;
         }
-        return NULL_TAG;
     }
-    return NON_TAG;
+    StripTags(Token);
 }
 
-void ExtractXMLNodeContents(FILE *handle, char **tags)
+
+void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
 {
     rewind(handle);
     char *Token = (char *)calloc(1,sizeof(char) * LONGEST_WORD_LENGTH);
 
-    TagStack XMLStack = {};
-    WordTypeTag_TDE ActiveTag = NULL_TAG;
-
+    bool OpeningTag = false;
+    bool ClosingTag = false;
     while(!feof(handle))
     {
         if(fgets(Token, 100, handle))
         {
-            StringReformat(Token);
-            WordTypeTag_TDE Tag = FindTag(Token, tags, &XMLStack);
-
-            if(Tag == NEW_TAG)
+            StripWhiteSpace(Token);
+            CheckXMLTags(Token, &OpeningTag, &ClosingTag);
+            if(!(OpeningTag || ClosingTag))
             {
-                ActiveTag = XMLStack.Tags[XMLStack.CurrentTagDepth];
-                Assert(XMLStack.CurrentTagDepth >= 0);
-                Assert((int)ActiveTag >= (int)FunctionWords_tag && (int)ActiveTag < (int)NUMBER_OF_TAGS);
-
-                wordsListArray[ActiveTag].count = 0;
-                continue;
+                AddToList(XMLTree->CurrentNode, Token);
             }
-            else if(Tag == NON_TAG)
+            else
             {
-                char *WordStorage = (char *)calloc(1,sizeof(char) * getStringLength(Token));
-                CopyString(Token, WordStorage);
-
-                wordsListArray[ActiveTag].words[wordsListArray[ActiveTag].count++] = WordStorage;
-            }
-            else if(Tag == NULL_TAG)
-            {
-                ActiveTag = XMLStack.Tags[XMLStack.CurrentTagDepth];
-                continue;
+                if(OpeningTag)
+                {
+                    if(!XMLTree->RootNode)
+                    {
+                        XMLTree->RootNode = NewNode(Token);
+                        XMLTree->CurrentNode = XMLTree->RootNode;
+                    }
+                    else
+                    {
+                        PushToChild(XMLTree, Token);
+                    }
+                }
+                if(ClosingTag)
+                {
+                    Assert(XMLTree->CurrentNode);
+                    if(XMLTree->CurrentNode->Tag == XMLTree->RootNode->Tag)
+                    {
+                        //CreateSibling
+                        break;
+                    }
+                    else
+                    {
+                        PopToParent(XMLTree, Token);
+                    }
+                }
             }
         }
     }
     free((void *)Token);
 }
 
-bool ReadDictionaryFromXMLConfigFile()
+NodeTree * ReadDictionaryFromXMLConfigFile()
 {
-    char *Tags[NUMBER_OF_TAGS] = {"<FunctionWords>", "<Punctuation>", "<Pronoun>",\
-        "<Verb>", "<Adverb>", "<Adjective>", "<Preposition>", "<Determiniers>", "<Profanities>"};
-
+    NodeTree * ParsedXML = (NodeTree *)calloc(1,sizeof(NodeTree));
     FILE *handle = OpenFile("dictConfig.xml", "r");
     if(handle == NULL)
     {
         printf("\nFailed to open config file, please ensure the xml file is in \
                 the same dir as you launched this from\n");
-        return false;
+        return 0;
     }
     else
     {
-        ExtractXMLNodeContents(handle, Tags);
+        ExtractXMLNodeContents(handle, ParsedXML);
     }
 
     fclose(handle);
-    return true;
+    return ParsedXML;
 }
 
-bool isInATag(char *token, WordTypeTag_TDE tag)
-{
-    u32 i = 0;
-    while(i++ < wordsListArray[tag].count)
-    {
-        if(CompareString(token, wordsListArray[tag].words[i]))
-        {
-            return true;
-        }
-    }
-    return false;
-}
 
 inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, WordTypeTag_TDE tag)
 {
@@ -189,6 +246,19 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
        docWordList[newIndex].tag = tag;
        docWordList[newIndex].count = 0;
     }
+}
+
+bool isInATag(char *token, WordTypeTag_TDE tag)
+{
+    u32 i = 0;
+    while(i++ < wordsListArray[tag].count)
+    {
+        if(CompareString(token, wordsListArray[tag].words[i]))
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 char* GetNextToken(FILE* handle)
@@ -222,6 +292,7 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
         return false;
     }
     rewind(handle);
+
     u32 documentWordCount = 0;
     //NOTE:(down) Should not have to do this but ya know how bad things have gotten
     DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
@@ -230,17 +301,16 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
     {
         u32 tagProcessingAmount = 0;
         token = GetNextToken(handle);
+        stripTags(token);
 
-        while(tagProcessingAmount++ < NUMBER_OF_TAGS)
+        if(isInATag(token)
         {
-            if(isInATag(token, (WordTypeTag_TDE)tagProcessingAmount))
-            {
-                AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
-                break;
-            }
+            AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
+            break;
         }
-        tagProcessingAmount = 0;
+
         token = {};//clear to all 0's so we don't have left over chars that could mess up the next check
+        
     }
     fclose(handle);
     return true;
@@ -249,6 +319,10 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
 void main(char *args[])
 {
     printf("Welcome to Spector Authorship Attribution Cpp remake");
-    if(ReadDictionaryFromXMLConfigFile()) {printf("\nFile Opened Succesfully\n");}
+    NodeTree * ParsedXML = ReadDictionaryFromXMLConfigFile();
+
+    if(ParsedXML) {printf("\nFile Opened Succesfully\n");}
+    /*
     if(ReadDocument("testDocument.txt")) {printf("File Read fully\n");}
+    */
 }
