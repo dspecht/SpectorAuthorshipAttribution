@@ -30,6 +30,8 @@ FILE* OpenFile(char *filePath, char *openFMT="rw")
     return handle;
 }
 
+FILE *testhandle = OpenFile("dictConfig.xml", "r");
+
 void StringReformat(char * Token)
 {
     char CurrentCharacter;
@@ -155,12 +157,16 @@ bool ReadDictionaryFromXMLConfigFile()
 
 bool isInATag(char *token, WordTypeTag_TDE tag)
 {
-    u32 i = 0;
-    while(i++ < wordsListArray[tag].count)
+    Assert(token != NULL);
+    if((char)token != '\n' && (char)token != '\t') // TODO: Refine this else where since this could mess things up
     {
-        if(CompareString(token, wordsListArray[tag].words[i]))
+        u32 i = 0;
+        while(i++ < wordsListArray[tag].count)
         {
-            return true;
+            if(CompareString(token, wordsListArray[tag].words[i]))
+            {
+                return true;
+            }
         }
     }
     return false;
@@ -174,6 +180,8 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     {
         if(docWordList[index].tag == tag)
         {
+            Assert(word != NULL);
+            Assert(docWordList[index].word != NULL);
             if(CompareString(docWordList[index].word, word))
             {
                 wordFound = true;
@@ -191,26 +199,6 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     }
 }
 
-char* GetNextToken(FILE* handle)
-{
-    char *currentWord = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
-    char temp = NULL;
-
-    while(temp != ' ')
-    {
-        temp = (char)fgetc(handle);
-
-        //TODO: Find a way to do punctuation that does not cause loss of data
-        //if(isInATag((char*)temp,Punctuation_tag)) {return (char*)temp;}
-        if(temp == '\n' || temp == '\t' || temp == NULL)
-        {
-            CatString(currentWord, (char*)temp, currentWord);
-        }
-    }
-
-    return currentWord;
-}
-
 bool ReadTextDocument(char *documentFilePath)
 { //TODO:(dustin) Do a Char by Char read of the file to create the words
     FILE *handle = OpenFile(documentFilePath, "r");
@@ -220,7 +208,7 @@ bool ReadTextDocument(char *documentFilePath)
                 the same dir as you launched this from\n", documentFilePath);
         return false;
     }
-    rewind(handle);
+    //rewind(handle);
     u32 documentWordCount = 0;
     //NOTE:(down) Should not have to do this but ya know how bad things have gotten
     DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
@@ -228,12 +216,13 @@ bool ReadTextDocument(char *documentFilePath)
     char temp = NULL;
     u32 tagProcessingAmount = 0;
 
+    Assert(handle != NULL); // remove later
     while(!feof(handle))
     {
-        while(temp != ' ')
+        while(temp != ' ') // GetNextToken
         {
             temp = (char)fgetc(handle);
-
+            Assert((char*)temp != NULL);
             if(isInATag((char*)temp,Punctuation_tag))
             {
                 AddToDocumentWordCount(docWordList, documentWordCount, (char*)temp, Punctuation_tag);

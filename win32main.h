@@ -44,7 +44,7 @@ typedef enum
 	FunctionWords_tag,
 	Punctuation_tag,
 	Pronoun_tag,
-	Verb_tag, 
+	Verb_tag,
 	Adverb_tag,
 	Adjective_tag,
 	Preposition_tag,
