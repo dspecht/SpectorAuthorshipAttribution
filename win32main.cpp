@@ -92,7 +92,7 @@ void PopToParent(NodeTree *Tree, char *Token)
 {
     Assert(CompareString(Token, (char *)Tree->CurrentNode->Tag));
     Assert(Tree->CurrentNode->Tag != Tree->RootNode->Tag);
-    
+
     Tree->CurrentNode = Tree->CurrentNode->Parent;
 }
 
@@ -295,7 +295,6 @@ NodeTree * ReadDictionaryFromXMLConfigFile()
     return ParsedXML;
 }
 
-
 inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, char * tag)
 {
     u32 index = 0;
@@ -323,30 +322,6 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     }
 }
 
-
-bool ReadTextDocument(char *documentFilePath)
-{ 
-    //TODO:(dustin) Do a Char by Char read of the file to create the words
-    char* GetNextToken(FILE* handle);
-    char *currentWord = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
-    char temp = NULL;
-
-    while(temp != ' ')
-    {
-        temp = (char)fgetc(handle);
-
-        //TODO: Find a way to do punctuation that does not cause loss of data
-        //if(isInATag((char*)temp,Punctuation_tag)) {return (char*)temp;}
-        if(temp == '\n' || temp == '\t') {temp = NULL;}
-        if(!temp == NULL)
-        {
-            CatString(currentWord, (char*)temp, currentWord);
-        }
-    }
-
-    return currentWord;
-}
-
 bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do a Char by Char read of the file to create the words
 {
     FILE *handle = OpenFile(documentFilePath, "r");
@@ -369,8 +344,21 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
     while(!feof(handle))
     {
         u32 tagProcessingAmount = 0;
-        token = GetNextToken(handle);
-        StripTags(token);
+
+        while(temp != ' ')
+        {
+            temp = (char)fgetc(handle);
+
+            //TODO: Find a way to do punctuation that does not cause loss of data
+            //if(isInATag((char*)temp,Punctuation_tag)) {return (char*)temp;}
+            if(temp == '\n' || temp == '\t') {temp = NULL;}
+            if(!temp == NULL)
+            {
+                CatString(token, (char*)temp, token);
+            }
+        }
+
+ //       StripTags(token);  //Why do we need this here?
 
         char *Tag = FindWordCategory(XMLTree, token);
         if(Tag)
@@ -391,6 +379,6 @@ void main(char *args[])
     NodeTree * ParsedXML = ReadDictionaryFromXMLConfigFile();
 
     if(ParsedXML) {printf("\nFile Opened Succesfully\n");}
-    
+
     if(ReadDocument("testDocument.txt",ParsedXML)) {printf("File Read fully\n");}
 }
