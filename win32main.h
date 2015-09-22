@@ -41,23 +41,17 @@ typedef float r32;
 #define MAX_WORDS_IN_A_LIST 100000
 #define MAX_WORDS_PER_LIST 1000
 
-struct DictEntry
-{
-	WordList *Data;
-	int Index;
-};
-
 struct WordList
 {
     char *words[MAX_WORDS_PER_LIST];
-    u32 count = 0;
+    int count = 0;
 };
 
 struct Node
 {
     //relatively few tags so allocate a static array
     char Tag[LONGEST_WORD_LENGTH];
-    WordList * WordsInCategory;
+    WordList *WordsInCategory;
     
     Node *Parent;
 
@@ -71,6 +65,8 @@ struct NodeTree
 {
     Node *RootNode;
     Node *CurrentNode;
+
+    int NumberOfNodes;
 };
 
 struct DocumentWord

@@ -75,6 +75,8 @@ Node * NewNode(char *Token)
 {
     Node *NewNode = (Node *)calloc(1, sizeof(Node));
     CopyString(Token, (char *)NewNode->Tag);
+    NewNode->RightSibling = NewNode;
+    NewNode->LeftSibling = NewNode;
 
     return NewNode;
 }
@@ -119,6 +121,7 @@ void PushToChild(NodeTree *Tree, char * Token)
 
         Tree->CurrentNode = ReferenceNode->LeftSibling;
     }
+    ++Tree->NumberOfNodes;
 }
 
 void AddToList(Node *ActiveNode, char *Token)
@@ -152,7 +155,6 @@ void CheckXMLTags(char *Token, bool *OpeningTag, bool *ClosingTag)
     StripTags(Token);
 }
 
-
 void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
 {
     rewind(handle);
@@ -178,6 +180,7 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
                     {
                         XMLTree->RootNode = NewNode(Token);
                         XMLTree->CurrentNode = XMLTree->RootNode;
+                        ++XMLTree->NumberOfNodes;
                     }
                     else
                     {
@@ -203,6 +206,73 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
     free((void *)Token);
 }
 
+Node * TraverseTree(Node * node)
+{
+    if(node->RightSibling == node)
+    {
+        if(node->Parent)
+        {
+            return 0;
+        }
+        else
+        {
+            return TraverseTree(node->Parent);
+        }
+    }
+    else
+    {
+        return node->RightSibling;
+    }
+}
+
+bool CheckCategory(char *Word, WordList *List)
+{
+    char **WordList = List->words;
+    for(int ListIndex = 0;
+        ListIndex < List->count;
+        ++ListIndex)
+    {
+        char *WordToCheck = WordList[ListIndex];
+        if(CompareString(WordToCheck,Word))
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+char * FindWordCategory(NodeTree * Tree, char * Word)
+{
+    bool Found = false;
+    int NodesTraversed = 0;
+    Node *TraversalNode = Tree->RootNode;
+    while(!Found)
+    {
+        if(TraversalNode->WordsInCategory)
+        {
+            WordList *List = TraversalNode->WordsInCategory;
+            if(CheckCategory(Word, List))
+            {
+                return TraversalNode->Tag;
+            }
+            else
+            {
+                TraversalNode = TraverseTree(TraversalNode);
+                if(!TraversalNode)
+                {
+                    return false;
+                }
+            }
+        }
+        ++NodesTraversed;
+        if(NodesTraversed > Tree->NumberOfNodes)
+        {
+            Found = false;
+        }
+    }
+    return false;
+}
+
 NodeTree * ReadDictionaryFromXMLConfigFile()
 {
     NodeTree * ParsedXML = (NodeTree *)calloc(1,sizeof(NodeTree));
@@ -223,7 +293,7 @@ NodeTree * ReadDictionaryFromXMLConfigFile()
 }
 
 
-inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, WordTypeTag_TDE tag)
+inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, char * tag)
 {
     u32 index = 0;
     bool wordFound = false;
@@ -248,19 +318,6 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     }
 }
 
-bool isInATag(char *token, WordTypeTag_TDE tag)
-{
-    u32 i = 0;
-    while(i++ < wordsListArray[tag].count)
-    {
-        if(CompareString(token, wordsListArray[tag].words[i]))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 char* GetNextToken(FILE* handle)
 {
     char *currentWord = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
@@ -282,7 +339,7 @@ char* GetNextToken(FILE* handle)
     return currentWord;
 }
 
-bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read of the file to create the words
+bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do a Char by Char read of the file to create the words
 {
     FILE *handle = OpenFile(documentFilePath, "r");
     if(handle == NULL)
@@ -301,11 +358,12 @@ bool ReadDocument(char *documentFilePath) //TODO:(dustin) Do a Char by Char read
     {
         u32 tagProcessingAmount = 0;
         token = GetNextToken(handle);
-        stripTags(token);
+        StripTags(token);
 
-        if(isInATag(token)
+        char *Tag = FindWordCategory(XMLTree, token);
+        if(Tag)
         {
-            AddToDocumentWordCount(docWordList, documentWordCount, token, (WordTypeTag_TDE)tagProcessingAmount);
+            AddToDocumentWordCount(docWordList, documentWordCount, token, Tag);
             break;
         }
 
@@ -322,7 +380,7 @@ void main(char *args[])
     NodeTree * ParsedXML = ReadDictionaryFromXMLConfigFile();
 
     if(ParsedXML) {printf("\nFile Opened Succesfully\n");}
-    /*
-    if(ReadDocument("testDocument.txt")) {printf("File Read fully\n");}
-    */
+    
+    if(ReadDocument("testDocument.txt",ParsedXML)) {printf("File Read fully\n");}
+    
 }
