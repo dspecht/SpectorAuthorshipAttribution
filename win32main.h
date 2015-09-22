@@ -37,37 +37,45 @@ typedef float r32;
 
 #define ArrayCount(Array) (sizeof(Array) / sizeof((Array)[0]))
 
+#define LONGEST_WORD_LENGTH 100
+#define MAX_WORDS_IN_A_LIST 100000
 #define MAX_WORDS_PER_LIST 1000
-
-typedef enum
-{
-	FunctionWords_tag,
-	Punctuation_tag,
-	Pronoun_tag,
-	Verb_tag,
-	Adverb_tag,
-	Adjective_tag,
-	Preposition_tag,
-	Determiniers_tag,
-	Profanities_tag,
-	NUMBER_OF_TAGS,
-	NEW_TAG,
-	NON_TAG,
-	NULL_TAG
-}WordTypeTag_TDE;
 
 struct WordList
 {
     char *words[MAX_WORDS_PER_LIST];
-    u32 count = 0;
+    int count = 0;
+};
+
+struct Node
+{
+    //relatively few tags so allocate a static array
+    char Tag[LONGEST_WORD_LENGTH];
+    WordList *WordsInCategory;
+    
+    Node *Parent;
+
+    Node *LeftSibling;
+    Node *RightSibling;
+    
+    Node *Child;
+};
+
+struct NodeTree
+{
+    Node *RootNode;
+    Node *CurrentNode;
+
+    int NumberOfNodes;
 };
 
 struct DocumentWord
 {
     char *word;
-    WordTypeTag_TDE tag;
+    char *tag;
     u32 count = 0;
 };
+
 
 #define WIN32MAIN_H
 #endif
