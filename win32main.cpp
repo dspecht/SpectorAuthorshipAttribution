@@ -7,7 +7,7 @@ FILE* OpenFile(char *filePath, char *openFMT="rw")
     return handle;
 }
 
-void StripWhiteSpace(char *Token)
+void StringReformat(char * Token)
 {
     char CurrentCharacter;
     int Current = 0;
@@ -166,7 +166,7 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
     {
         if(fgets(Token, 100, handle))
         {
-            StripWhiteSpace(Token);
+            StringReformat(Token);
             CheckXMLTags(Token, &OpeningTag, &ClosingTag);
             if(!(OpeningTag || ClosingTag))
             {
@@ -235,7 +235,10 @@ bool CheckCategory(char *Word, WordList *List)
         char *WordToCheck = WordList[ListIndex];
         if(CompareString(WordToCheck,Word))
         {
-            return true;
+            if(CompareString(Word, WordToCheck))
+            {
+                return true;
+            }
         }
     }
     return false;
@@ -301,6 +304,8 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     {
         if(docWordList[index].tag == tag)
         {
+            Assert(word != NULL);
+            Assert(docWordList[index].word != NULL);
             if(CompareString(docWordList[index].word, word))
             {
                 wordFound = true;
@@ -318,8 +323,11 @@ inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char
     }
 }
 
-char* GetNextToken(FILE* handle)
-{
+
+bool ReadTextDocument(char *documentFilePath)
+{ 
+    //TODO:(dustin) Do a Char by Char read of the file to create the words
+    char* GetNextToken(FILE* handle);
     char *currentWord = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
     char temp = NULL;
 
@@ -354,6 +362,10 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
     //NOTE:(down) Should not have to do this but ya know how bad things have gotten
     DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
     char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
+    char temp = NULL;
+    u32 tagProcessingAmount = 0;
+
+    Assert(handle != NULL); // remove later
     while(!feof(handle))
     {
         u32 tagProcessingAmount = 0;
@@ -366,10 +378,9 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
             AddToDocumentWordCount(docWordList, documentWordCount, token, Tag);
             break;
         }
-
         token = {};//clear to all 0's so we don't have left over chars that could mess up the next check
-        
     }
+
     fclose(handle);
     return true;
 }
@@ -382,5 +393,4 @@ void main(char *args[])
     if(ParsedXML) {printf("\nFile Opened Succesfully\n");}
     
     if(ReadDocument("testDocument.txt",ParsedXML)) {printf("File Read fully\n");}
-    
 }
