@@ -75,8 +75,6 @@ Node * NewNode(char *Token)
 {
     Node *NewNode = (Node *)calloc(1, sizeof(Node));
     CopyString(Token, (char *)NewNode->Tag);
-    NewNode->RightSibling = NewNode;
-    NewNode->LeftSibling = NewNode;
 
     return NewNode;
 }
@@ -103,23 +101,18 @@ void PushToChild(NodeTree *Tree, char * Token)
         Tree->CurrentNode->Child = NewNode(Token);
         Tree->CurrentNode->Child->Parent = Tree->CurrentNode;
         Tree->CurrentNode = Tree->CurrentNode->Child;
-
-        Tree->CurrentNode->LeftSibling = Tree->CurrentNode;
-        Tree->CurrentNode->RightSibling = Tree->CurrentNode;
     }
     else
     {
-        //create a circular linked list for sibling nodes so that
-        //there is always only one node to traverse to add a sibling
-        //parents can only point to one child and must traverse the linked
-        //list to find all siblings
         Node *ReferenceNode = Tree->CurrentNode->Child;
-        ReferenceNode->LeftSibling->RightSibling = NewNode(Token);
-        ReferenceNode->LeftSibling->RightSibling->LeftSibling = ReferenceNode->LeftSibling;
-        ReferenceNode->LeftSibling = ReferenceNode->LeftSibling->RightSibling;
-        ReferenceNode->LeftSibling->Parent = Tree->CurrentNode;
-
-        Tree->CurrentNode = ReferenceNode->LeftSibling;
+        while(ReferenceNode->RightSibling)
+        {
+            ReferenceNode = ReferenceNode->RightSibling;
+        }
+        ReferenceNode->RightSibling = NewNode(Token);
+        ReferenceNode->RightSibling->LeftSibling = ReferenceNode;
+        ReferenceNode->RightSibling->Parent = ReferenceNode->Parent;
+        Tree->CurrentNode = ReferenceNode->RightSibling;
     }
     ++Tree->NumberOfNodes;
 }
@@ -160,68 +153,96 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
     rewind(handle);
     char *Token = (char *)calloc(1,sizeof(char) * LONGEST_WORD_LENGTH);
 
-    bool OpeningTag = false;
+    bool OpeningTag = false;     
     bool ClosingTag = false;
+    bool RecentlyPopped = false;
     while(!feof(handle))
-    {
-        if(fgets(Token, 100, handle))
-        {
+    {         
+        if(fgets(Token, 100, handle))         
+        { 
             StringReformat(Token);
             CheckXMLTags(Token, &OpeningTag, &ClosingTag);
-            if(!(OpeningTag || ClosingTag))
+            if(RecentlyPopped)
             {
-                AddToList(XMLTree->CurrentNode, Token);
+                RecentlyPopped = false;
+                continue;
             }
-            else
+            if(!(OpeningTag || ClosingTag))
+            { 
+                AddToList(XMLTree->CurrentNode, Token);
+            } 
+            else 
             {
                 if(OpeningTag)
-                {
-                    if(!XMLTree->RootNode)
-                    {
+                { 
+                    if(!XMLTree->RootNode) 
+                    { 
                         XMLTree->RootNode = NewNode(Token);
                         XMLTree->CurrentNode = XMLTree->RootNode;
                         ++XMLTree->NumberOfNodes;
-                    }
-                    else
-                    {
+                    } 
+                    else 
+                    { 
                         PushToChild(XMLTree, Token);
-                    }
-                }
-                if(ClosingTag)
-                {
+                    } 
+                } 
+                if(ClosingTag) 
+                { 
                     Assert(XMLTree->CurrentNode);
-                    if(XMLTree->CurrentNode->Tag == XMLTree->RootNode->Tag)
-                    {
-                        //CreateSibling
+                    if(!XMLTree->CurrentNode->Parent) 
+                    { 
+                        XMLTree->CurrentNode->RightSibling = NewNode(Token); 
+                        XMLTree->CurrentNode->RightSibling->LeftSibling = XMLTree->CurrentNode; 
+                        XMLTree->CurrentNode = XMLTree->CurrentNode->RightSibling;
                         break;
-                    }
+                    } 
                     else
-                    {
+                    { 
                         PopToParent(XMLTree, Token);
-                    }
-                }
-            }
+                        RecentlyPopped = true;
+                    } 
+                } 
+            } 
+        }     
+    }
+    free((void *)Token); 
+}
+
+Node * ReverseTree(Node *node)
+{   
+    if(node->RightSibling)
+    {
+        return node->RightSibling;
+    }
+    else
+    {
+        if(node->Parent)
+        {
+            return ReverseTree(node->Parent);
+        }
+        else
+        {
+            return 0;
         }
     }
-    free((void *)Token);
 }
 
 Node * TraverseTree(Node * node)
 {
-    if(node->RightSibling == node)
+    if(node->Child)
     {
-        if(node->Parent)
-        {
-            return 0;
-        }
-        else
-        {
-            return TraverseTree(node->Parent);
-        }
+        return node->Child;
     }
     else
     {
-        return node->RightSibling;
+        if(node->RightSibling)
+        {
+            return node->RightSibling;
+        }
+        else
+        {
+            return ReverseTree(node);
+        }
     }
 }
 
@@ -263,17 +284,21 @@ char * FindWordCategory(NodeTree * Tree, char * Word)
                 TraversalNode = TraverseTree(TraversalNode);
                 if(!TraversalNode)
                 {
-                    return false;
+                    break;
                 }
             }
+        }
+        else
+        {
+            TraverseTree(TraversalNode);
         }
         ++NodesTraversed;
         if(NodesTraversed > Tree->NumberOfNodes)
         {
-            Found = false;
+            break;
         }
     }
-    return false;
+    return 0;
 }
 
 NodeTree * ReadDictionaryFromXMLConfigFile()
@@ -354,13 +379,14 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
             if(temp == '\n' || temp == '\t') {temp = NULL;}
             if(!temp == NULL)
             {
-                CatString(token, (char*)temp, token);
+                CatString(token, (char*)&temp, token);
             }
         }
 
- //       StripTags(token);  //Why do we need this here?
-
+        Assert(token);
         char *Tag = FindWordCategory(XMLTree, token);
+
+        //Do a FindandIncrement(XMLTree, token, documentIndex)
         if(Tag)
         {
             AddToDocumentWordCount(docWordList, documentWordCount, token, Tag);

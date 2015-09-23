@@ -41,6 +41,8 @@ typedef float r32;
 #define MAX_WORDS_IN_A_LIST 100000
 #define MAX_WORDS_PER_LIST 1000
 
+//flesh out more what the documend structure is going to look like
+
 struct WordList
 {
     char *words[MAX_WORDS_PER_LIST];
@@ -49,7 +51,6 @@ struct WordList
 
 struct Node
 {
-    //relatively few tags so allocate a static array
     char Tag[LONGEST_WORD_LENGTH];
     WordList *WordsInCategory;
     
