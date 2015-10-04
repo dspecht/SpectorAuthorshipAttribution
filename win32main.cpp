@@ -4,6 +4,7 @@ FILE* OpenFile(char *filePath, char *openFMT="rw")
 {
     FILE *handle = NULL;
     fopen_s(&handle, filePath, openFMT);
+    Assert(handle != NULL);
     return handle;
 }
 
@@ -127,7 +128,7 @@ void AddToList(Node *ActiveNode, char *Token)
     char *WordLocation = (char *)calloc(1,sizeof(char) * getStringLength(Token));
     WordList *ActiveList = ActiveNode->WordsInCategory;
     CopyString(Token, WordLocation);
-    ActiveList->words[ActiveList->count++] = WordLocation;
+    ActiveList->words[ActiveList->count++]->word = WordLocation;
 }
 
 void CheckXMLTags(char *Token, bool *OpeningTag, bool *ClosingTag)
@@ -153,13 +154,13 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
     rewind(handle);
     char *Token = (char *)calloc(1,sizeof(char) * LONGEST_WORD_LENGTH);
 
-    bool OpeningTag = false;     
+    bool OpeningTag = false;
     bool ClosingTag = false;
     bool RecentlyPopped = false;
     while(!feof(handle))
-    {         
-        if(fgets(Token, 100, handle))         
-        { 
+    {
+        if(fgets(Token, 100, handle))
+        {
             StringReformat(Token);
             CheckXMLTags(Token, &OpeningTag, &ClosingTag);
             if(RecentlyPopped)
@@ -168,48 +169,48 @@ void ExtractXMLNodeContents(FILE *handle, NodeTree * XMLTree)
                 continue;
             }
             if(!(OpeningTag || ClosingTag))
-            { 
+            {
                 AddToList(XMLTree->CurrentNode, Token);
-            } 
-            else 
+            }
+            else
             {
                 if(OpeningTag)
-                { 
-                    if(!XMLTree->RootNode) 
-                    { 
+                {
+                    if(!XMLTree->RootNode)
+                    {
                         XMLTree->RootNode = NewNode(Token);
                         XMLTree->CurrentNode = XMLTree->RootNode;
                         ++XMLTree->NumberOfNodes;
-                    } 
-                    else 
-                    { 
+                    }
+                    else
+                    {
                         PushToChild(XMLTree, Token);
-                    } 
-                } 
-                if(ClosingTag) 
-                { 
+                    }
+                }
+                if(ClosingTag)
+                {
                     Assert(XMLTree->CurrentNode);
-                    if(!XMLTree->CurrentNode->Parent) 
-                    { 
-                        XMLTree->CurrentNode->RightSibling = NewNode(Token); 
-                        XMLTree->CurrentNode->RightSibling->LeftSibling = XMLTree->CurrentNode; 
+                    if(!XMLTree->CurrentNode->Parent)
+                    {
+                        XMLTree->CurrentNode->RightSibling = NewNode(Token);
+                        XMLTree->CurrentNode->RightSibling->LeftSibling = XMLTree->CurrentNode;
                         XMLTree->CurrentNode = XMLTree->CurrentNode->RightSibling;
                         break;
-                    } 
+                    }
                     else
-                    { 
+                    {
                         PopToParent(XMLTree, Token);
                         RecentlyPopped = true;
-                    } 
-                } 
-            } 
-        }     
+                    }
+                }
+            }
+        }
     }
-    free((void *)Token); 
+    free((void *)Token);
 }
 
 Node * ReverseTree(Node *node)
-{   
+{
     if(node->RightSibling)
     {
         return node->RightSibling;
@@ -248,12 +249,11 @@ Node * TraverseTree(Node * node)
 
 bool CheckCategory(char *Word, WordList *List)
 {
-    char **WordList = List->words;
-    for(int ListIndex = 0;
+    for(u32 ListIndex = 0;
         ListIndex < List->count;
         ++ListIndex)
     {
-        char *WordToCheck = WordList[ListIndex];
+        char *WordToCheck = List->words[ListIndex]->word;
         if(CompareString(WordToCheck,Word))
         {
             if(CompareString(Word, WordToCheck))
@@ -268,7 +268,7 @@ bool CheckCategory(char *Word, WordList *List)
 char * FindWordCategory(NodeTree * Tree, char * Word)
 {
     bool Found = false;
-    int NodesTraversed = 0;
+    u32 NodesTraversed = 0;
     Node *TraversalNode = Tree->RootNode;
     while(!Found)
     {
@@ -320,34 +320,31 @@ NodeTree * ReadDictionaryFromXMLConfigFile()
     return ParsedXML;
 }
 
-inline void AddToDocumentWordCount(DocumentWord *docWordList, u32 docCount, char *word, char * tag)
+void FindAndIcreament(NodeTree *tree, char *token, u32 documentIndex)
 {
-    u32 index = 0;
-    bool wordFound = false;
-    while(index < docCount)
+    r32 found = false;
+    u32 nodesTraversed = 0;
+    Node *traversalNode = tree->RootNode;
+    while(!found)
     {
-        if(docWordList[index].tag == tag)
+        if(traversalNode->WordsInCategory)
         {
-            Assert(word != NULL);
-            Assert(docWordList[index].word != NULL);
-            if(CompareString(docWordList[index].word, word))
+            WordList *list = traversalNode->WordsInCategory;
+
+            for(u32 index=0; index < list->count; ++index)
             {
-                wordFound = true;
-                docWordList[index].count++;
+                char *wordToCheck = list->words[index]->word;
+                if(CompareString(wordToCheck, token))
+                { ++list->words[index]->count[documentIndex]; }
             }
         }
-        index++;
-    }
-    if(!wordFound)
-    {
-       u32 newIndex = docCount + 1;
-       docWordList[newIndex].word = word;
-       docWordList[newIndex].tag = tag;
-       docWordList[newIndex].count = 0;
+        else {TraverseTree(traversalNode);}
+        ++nodesTraversed;
+        if(nodesTraversed > tree->NumberOfNodes) {break;}
     }
 }
 
-bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do a Char by Char read of the file to create the words
+bool ReadDocument(char *documentFilePath, NodeTree * XMLTree, u32 documentIndex) //TODO:(dustin) Do a Char by Char read of the file to create the words
 {
     FILE *handle = OpenFile(documentFilePath, "r");
     if(handle == NULL)
@@ -357,11 +354,11 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
         return false;
     }
     rewind(handle);
-
     u32 documentWordCount = 0;
     //NOTE:(down) Should not have to do this but ya know how bad things have gotten
     DocumentWord *docWordList = (DocumentWord*)calloc(1, sizeof(DocumentWord) * MAX_WORDS_IN_A_LIST);
     char *token = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
+    char *tempString = (char *)calloc(1, sizeof(char) * LONGEST_WORD_LENGTH);
     char temp = NULL;
     u32 tagProcessingAmount = 0;
 
@@ -372,29 +369,21 @@ bool ReadDocument(char *documentFilePath, NodeTree * XMLTree) //TODO:(dustin) Do
 
         while(temp != ' ')
         {
+            //Think how to do the puncation that it does not
+            //Disrupt the flow and not add twice tree traversals
             temp = (char)fgetc(handle);
-
-            //TODO: Find a way to do punctuation that does not cause loss of data
-            //if(isInATag((char*)temp,Punctuation_tag)) {return (char*)temp;}
             if(temp == '\n' || temp == '\t') {temp = NULL;}
-            if(!temp == NULL)
+			if (temp != NULL)
             {
-                CatString(token, (char*)&temp, token);
+                Assert(temp != 0);
+                CatString(tempString, (char*)&temp, token);
             }
         }
 
-        Assert(token);
-        char *Tag = FindWordCategory(XMLTree, token);
-
-        //Do a FindandIncrement(XMLTree, token, documentIndex)
-        if(Tag)
-        {
-            AddToDocumentWordCount(docWordList, documentWordCount, token, Tag);
-            break;
-        }
-        token = {};//clear to all 0's so we don't have left over chars that could mess up the next check
+        Assert(token != NULL);
+        FindAndIcreament(XMLTree, token, documentIndex);
+        token = {}; //Clear
     }
-
     fclose(handle);
     return true;
 }
@@ -406,5 +395,5 @@ void main(char *args[])
 
     if(ParsedXML) {printf("\nFile Opened Succesfully\n");}
 
-    if(ReadDocument("testDocument.txt",ParsedXML)) {printf("File Read fully\n");}
+    if(ReadDocument("testDocument.txt",ParsedXML,0)) {printf("File Read fully\n");}
 }

@@ -40,25 +40,32 @@ typedef float r32;
 #define LONGEST_WORD_LENGTH 100
 #define MAX_WORDS_IN_A_LIST 100000
 #define MAX_WORDS_PER_LIST 1000
+#define MAX_DOCUMENTS 100
 
 //flesh out more what the documend structure is going to look like
 
+struct DocumentWord
+{
+    char *word;
+    u32 count[MAX_DOCUMENTS];
+};
+
 struct WordList
 {
-    char *words[MAX_WORDS_PER_LIST];
-    int count = 0;
+    DocumentWord *words[MAX_WORDS_PER_LIST];
+    u32 count = 0;
 };
 
 struct Node
 {
     char Tag[LONGEST_WORD_LENGTH];
     WordList *WordsInCategory;
-    
+
     Node *Parent;
 
     Node *LeftSibling;
     Node *RightSibling;
-    
+
     Node *Child;
 };
 
@@ -67,16 +74,7 @@ struct NodeTree
     Node *RootNode;
     Node *CurrentNode;
 
-    int NumberOfNodes;
+    u32 NumberOfNodes;
 };
-
-struct DocumentWord
-{
-    char *word;
-    char *tag;
-    u32 count = 0;
-};
-
-
 #define WIN32MAIN_H
 #endif
